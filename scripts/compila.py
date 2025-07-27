@@ -1,4 +1,3 @@
-# coding: latin-1
 """
 Compila los archivos fuente y de libreria en una determinada carpeta para generar el dsurs.dll
 """
@@ -16,7 +15,6 @@ path_str = [
     r"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx86\x86",
     r"C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x86",
     r"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE",
-    r"C:\Users\User\Desktop\Usuarios_PSSE\Lib",
 ]
 
 lib_str = [
@@ -24,7 +22,6 @@ lib_str = [
     r"C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\lib\x86",
     r"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\x86",
     r"C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\ucrt\x86",
-    r"C:\Users\User\Desktop\Usuarios_PSSE\Lib",
 ]
 
 incl_str = [
@@ -63,7 +60,7 @@ def compila(dllname, files):
     addopstr = psse_env_manager.ivf_compiler_options_add(ivfversion, "/Qm32")
 
     ierr = psse_env_manager.create_dll(psse_vrsn, src_lst, modsources=[], 
-        objlibfiles=objlibfiles, dllname=dllname, workdir=os.path.dirname(dllname), showprg=True,
+        objlibfiles=objlibfiles, dllname=dllname, workdir=os.path.dirname(dllname), showprg=False,
         useivfvrsn=ivfversion, shortname='DSUSR', description='User Model',
         majorversion=1, minorversion=0, buildversion=0, companyname='', mypathlib=False,
         keep=False, keepf=False)
@@ -76,7 +73,7 @@ def compila(dllname, files):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compilador de modelos de PSSE')    
-    parser.add_argument('files', nargs='+', help='Archivos .lib .f .for .f90 .flx')
+    parser.add_argument('--files', nargs='+', help='Archivos .lib .f .for .f90 .flx')
     parser.add_argument('-o', '--output', default='dsusr.dll', help='Archivo de salida .dll')
     args = parser.parse_args()
     

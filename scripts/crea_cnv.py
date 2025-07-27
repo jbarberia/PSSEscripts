@@ -3,19 +3,19 @@
 Convierte los casos a CNV
 """
 
+import argparse
 import psse34
 import psspy
-import sys
-import os
 
 _i = psspy.getdefaultint()
 _f = psspy.getdefaultreal()
 
-def crea_cnv(savfile, pyfiles):
+def crea_cnv(savfile, outfile, pyfiles):
     """
     Convierte los casos que se pasen en funcion de los pyfiles.
     Si no se pasa ninguno, se toma una conversion estandar.   
     """
+    psspy.psseinit()
     psspy.case(savfile)
     
     if not pyfiles:
@@ -41,18 +41,15 @@ def crea_cnv(savfile, pyfiles):
         for py in pyfiles:
             execfile(py)       
     
-    psspy.save(savfile.replace(".sav", ".cnv"))
+    psspy.save(outfile)
 
 
-if __name__ == "__main__":   
-    savfiles = []
-    pyfiles = []
-    for f in sys.argv[1:]:
-        if f.endswith(".sav"):
-            savfiles.append(os.path.abspath(f))
-        if f.endswith(".py"):
-            pyfiles.append(os.path.abspath(f))
-        
-    psspy.psseinit()
-    for savfile in savfiles:
-        crea_cnv(savfile, pyfiles)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Crea archivo .cnv a partir de .sav y scripts .py.")    
+    parser.add_argument("--sav", required=True, help="Caso de entrada .SAV")
+    parser.add_argument("--cnv", required=True, help="Caso de salida .CNV")
+    parser.add_argument("--py", nargs='+', required=False, help="Archivos de conversion de demanda")
+    
+    args = parser.parse_args()
+    
+    crea_cnv(args.sav, args.cnv, args.py)

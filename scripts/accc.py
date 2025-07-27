@@ -2,6 +2,7 @@
 """
 Este script corre los ACCC para varios SAVs y un unico juego de archivos SUB, MON, CON
 """
+import argparse
 import os
 import sys
 import shutil
@@ -19,7 +20,7 @@ _s = psspy.getdefaultchar()
 # Opciones ---------------------------------------------------------------------
 ACCC_OPTIONS = {
     # OPCIONES ACCC
-    "tol"    :   _f,
+    "tol"    :   5,
     "OPTACC1":   0, # tap flag, 0 - disable, 1 - step, 2 - direct
     "OPTACC2":   0, # area interchage, 0 - disable
     "OPTACC3":   0, # phase shift, 0 - disable
@@ -68,15 +69,6 @@ ACCC_OPTIONS = {
 }
 
 
-# Funciones --------------------------------------------------------------------
-def chequear_error(fun, ierr, case, comment):
-    _, error_string = psspy.apierrstr(fun, ierr)
-    case = os.path.basename(case)
-    if ierr != 0:
-        sys.stderr.write("Error en funcion {} ierr={}, para el caso {}, {}\n{}\n".format(fun, ierr, case, comment, error_string))
-        exit(1)
-        
-
 def prepara_caso():
     """
     Ajustes para que funcione el modulo de contingencias dentro del SADI
@@ -92,78 +84,72 @@ def prepara_caso():
 
     # Ajusta strings del titulo para que sean ASCII    
     title_1, title_2 = psspy.titldt()
-    psspy.case_title_data(
-        unidecode(title_1),
-        unidecode(title_2),
-    )
+    # psspy.case_title_data(
+    #     unidecode(u"{}".format(title_1)),
+    #     unidecode(u"{}".format(title_2)),
+    # )
     
-    ierr = psspy.fnsl([0,0,0,0,0,0,0,0])
-    chequear_error("fnsl", ierr, case, "Preparacion flujo de carga")
+    ierr = psspy.fnsl([0,0,0,0,0,0,0,0])    
     assert psspy.solved() == 0
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="ACCC")
+    parser.add_argument(
+        "--sav",        
+        required=True,        
+        help="Archivos .sav de entrada (uno o más)"
+    )
+
+    parser.add_argument(
+        "--mon",
+        required=True,
+        help="Archivo .mon (obligatorio)"
+    )
+
+    parser.add_argument(
+        "--con",
+        required=True,
+        help="Archivo .con (obligatorio)"
+    )
+
+    parser.add_argument(
+        "--sub",
+        required=True,
+        help="Archivo .sub (obligatorio)"
+    )
+
+    args = parser.parse_args()
+    sav = args.sav
+    mon = args.mon
+    con = args.con
+    sub = args.sub
+
     psspy.psseinit()
+    ierr = psspy.case(sav)
+    assert ierr == 0
+    prepara_caso()
 
-    # Lee los archivos de entrada
-    files = sys.argv[1:]
-    sav = []
-    mon = None
-    con = None
-    sub = None
+    basename = os.path.basename(sav).replace(".sav", "")
+    dfx = "dfx/{}.dfx".format(basename)
+    acc = "acc/{}.acc".format(basename)
+    zip = "zip/{}.zip".format(basename)
 
-    for file in files:
-        if os.path.isfile(file):
-            if file.endswith(".sav"):
-                sav.append(file)
-            if file.endswith(".mon"):
-                mon = file
-            if file.endswith(".con"):
-                con = file
-            if file.endswith(".sub"):
-                sub = file
-             
-    if not sav:
-        exit("Falta archivo .sav")
-    if not mon:
-        exit("Falta archivo .mon")
-    if not con:
-        exit("Falta archivo .con")
-    if not sub:
-        exit("Falta archivo .sub")
+    # Prepara el DFX
+    ierr = psspy.dfax_2([1,1,0], sub, mon, con, dfx)
+    assert ierr == 0
 
-    # Para cada caso corre ACCC    
-    for case in sav:
-        psspy.case(case)
-        prepara_caso()
+    # Evita problemas de permisos con gdrive para guardar el zip    
+    tmp_zip = os.path.join(os.path.expanduser("~"), basename + ".zip")
         
-        basename = os.path.basename(case).replace(".sav", "")
-        dfx = os.path.join(case.replace(".sav", ".dfx"))
-        psspy.dfax_2([1,1,0], sub, mon, con, dfx)
-
-        accfile = os.path.join(case.replace(".sav", ".acc"))
-        tmp_zipfile = os.path.join(os.path.expanduser("~"), basename + ".zip") # Evita problemas de permisos con gdrive
-        
-        # Corre este para obtener el zip file
-        ierr = psspy.accc_with_dsp_3(
-            dfxfile=dfx,
-            accfile=accfile,
-            zipfile=tmp_zipfile,
-            optacc11=1,
-            **ACCC_OPTIONS
-        )
-        chequear_error("accc_with_dsp_3", ierr, case, "ACCC")
-
-        zipfile = os.path.join(case.replace(".sav", ".zip"))
-        shutil.move(tmp_zipfile, zipfile)
-
-        # Corre ACCC con acciones correctivas
-        psspy.case(case)
-        prepara_caso()
-
-        ierr = psspy.accc_with_cor_3(
-            dfxfile=dfx,
-            accfile=accfile,
-            **ACCC_OPTIONS
-        )
-        chequear_error("accc_with_cor_3", ierr, case, "ACCC con acciones correctivas")
+    # Corre este para obtener el zip file
+    ierr = psspy.accc_with_dsp_3(
+        dfxfile=dfx,
+        accfile=acc,
+        zipfile=tmp_zip,
+        optacc11=1,
+        **ACCC_OPTIONS
+    )
+    assert ierr == 0
+    shutil.move(tmp_zip, zip)
+    exit(0)
